@@ -26,7 +26,17 @@ import re
 import requests
 import sys
 import json
+import socket
+from urllib3.connection import HTTPConnection
 
+HTTPConnection.default_socket_options = (
+    HTTPConnection.default_socket_options + [
+        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+        (socket.SOL_TCP, socket.TCP_KEEPIDLE, 45),
+        (socket.SOL_TCP, socket.TCP_KEEPINTVL, 10),
+        (socket.SOL_TCP, socket.TCP_KEEPCNT, 6)
+    ]
+)
 try:
     from awsauth import S3Auth
 except ImportError:
@@ -183,19 +193,23 @@ def bucket_checker(word, s3_type):
     Returns:
         None
     """
-    if s3_type == "Object":
-        if args.a:
-            checker = requests.head(word.rstrip(), auth=S3Auth(ACCESS_KEY,
-                                                               SECRET_KEY))
-        else:
-            checker = requests.head(word.rstrip())
-    if s3_type == "Bucket":
-        if args.a:
-            checker = requests.get(word.rstrip(), auth=S3Auth(ACCESS_KEY,
-                                                              SECRET_KEY))
-        else:
-            checker = requests.get(word.rstrip())
-    check_response(checker.status_code, word, checker.content, s3_type)
+    try:
+        if s3_type == "Object":
+            if args.a:
+                checker = requests.head(word.rstrip(), auth=S3Auth(ACCESS_KEY,
+                                                                   SECRET_KEY))
+            else:
+                checker = requests.head(word.rstrip())
+        if s3_type == "Bucket":
+            if args.a:
+                checker = requests.get(word.rstrip(), auth=S3Auth(ACCESS_KEY,
+                                                                  SECRET_KEY))
+            else:
+                checker = requests.get(word.rstrip())
+        check_response(checker.status_code, word, checker.content, s3_type)
+    except:
+        print(f"Exception got with url: {word.rstrip()}, go to the dark side of vpn or stop pressing ctrl+c")
+        pass
 
 
 def grab_wordlist(inputfile):
